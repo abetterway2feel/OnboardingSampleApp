@@ -155,6 +155,9 @@ function createApp({ provisioning = createDefaultProvisioning() } = {}) {
     respond(res, provisioning.retry(req.params.customerId));
   });
 
+  // Data Mapping
+  app.use('/api', require('../mapping/routes'));
+
   return app;
 }
 

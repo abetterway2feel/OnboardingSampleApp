@@ -65,7 +65,7 @@ function App() {
           <CustomerInfoTab customers={onboardingData} onSaved={loadDashboard} />
         )}
         {activeTab === 'data-mapping' && (
-          <PlaceholderTab title="Data Mapping" description="Map customer data to platform configuration" />
+          <DataMappingTab customers={onboardingData} onSaved={loadDashboard} />
         )}
         {activeTab === 'tenant-setup' && (
           <TenantSetupTab customers={onboardingData} onTenantChanged={loadDashboard} />
@@ -302,6 +302,139 @@ function ImportTab({ onImported }) {
         </div>
       )}
     </form>
+  );
+}
+
+// Only the header row is needed, so don't send the whole sample file
+const SAMPLE_BYTES = 64 * 1024;
+
+function DataMappingTab({ customers, onSaved }) {
+  const [fields, setFields] = useState([]);
+  const [customerId, setCustomerId] = useState('');
+  const [headers, setHeaders] = useState([]);
+  const [columns, setColumns] = useState({});
+  const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/mapping-fields')
+      .then(res => res.json())
+      .then(setFields)
+      .catch(err => console.error('Failed to fetch mapping fields:', err));
+  }, []);
+
+  const fail = (body, status) => setMessage({
+    error: true,
+    text: body.fields ? Object.values(body.fields).join('. ') : (body.error || `HTTP ${status}`)
+  });
+
+  const select = async (id) => {
+    setCustomerId(id);
+    setHeaders([]);
+    setColumns({});
+    setMessage(null);
+    if (!id) return;
+    try {
+      const res = await fetch(`/api/customers/${id}/mapping`);
+      if (res.ok) {
+        const saved = await res.json();
+        setHeaders(saved.headers);
+        setColumns(saved.columns);
+      }
+    } catch (err) {
+      setMessage({ error: true, text: `Failed to load mapping: ${err.message}` });
+    }
+  };
+
+  const upload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setMessage(null);
+    try {
+      const csv = await file.slice(0, SAMPLE_BYTES).text();
+      const res = await fetch(`/api/customers/${customerId}/mapping/suggest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, csv })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) return fail(body, res.status);
+      setHeaders(body.headers);
+      setColumns(body.suggestions);
+    } catch (err) {
+      setMessage({ error: true, text: `Failed to read the file: ${err.message}` });
+    }
+  };
+
+  // A column can only feed one field, so picking it elsewhere moves it
+  const choose = (key) => (e) => {
+    const column = e.target.value || null;
+    const next = { ...columns };
+    for (const k of Object.keys(next)) if (column && next[k] === column) next[k] = null;
+    next[key] = column;
+    setColumns(next);
+    setMessage(null);
+  };
+
+  const save = async () => {
+    setMessage(null);
+    if (!columns.clientName) {
+      setMessage({ error: true, text: 'Client Name must be mapped to a column' });
+      return;
+    }
+    try {
+      const res = await fetch(`/api/customers/${customerId}/mapping`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ headers, columns })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) return fail(body, res.status);
+      await onSaved();
+      setMessage({ error: false, text: 'Mapping saved' });
+    } catch (err) {
+      setMessage({ error: true, text: `Failed to save: ${err.message}` });
+    }
+  };
+
+  return (
+    <div style={{ display: 'grid', gap: '12px', maxWidth: '420px' }}>
+      <h2>Data Mapping</h2>
+
+      <label>
+        Customer
+        <select value={customerId} onChange={(e) => select(e.target.value)} style={{ display: 'block', width: '100%' }}>
+          <option value="">Select a customer</option>
+          {customers.map(c => <option key={c.customerId} value={c.customerId}>{c.customerName}</option>)}
+        </select>
+      </label>
+
+      {customerId && (
+        <label>
+          Sample clients file
+          <input type="file" accept=".csv,text/csv" onChange={upload} style={{ display: 'block' }} />
+        </label>
+      )}
+
+      {headers.length > 0 && (
+        <>
+          <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Choose the file column for each client field.</p>
+          {fields.map(f => (
+            <label key={f.key}>
+              {f.label}{f.required ? ' (required)' : ''}
+              <select aria-label={f.label} value={columns[f.key] || ''} onChange={choose(f.key)} style={{ display: 'block', width: '100%' }}>
+                <option value="">Not mapped</option>
+                {headers.map(h => <option key={h} value={h}>{h}</option>)}
+              </select>
+            </label>
+          ))}
+          <button type="button" onClick={save}>Save mapping</button>
+        </>
+      )}
+
+      {message && (
+        <p role={message.error ? 'alert' : 'status'} style={{ color: message.error ? '#dc2626' : '#16a34a' }}>{message.text}</p>
+      )}
+    </div>
   );
 }
 

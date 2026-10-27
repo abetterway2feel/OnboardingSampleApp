@@ -25,8 +25,8 @@ test.describe('Onboarding Dashboard', () => {
     await page.goto('/');
 
     // Wait for data to load and verify example customer is shown
-    await expect(page.locator('.customer-card')).toBeVisible();
-    await expect(page.locator('.customer-card h3')).toContainText('Acme Corporation');
+    await expect(page.locator('.customer-card').first()).toBeVisible();
+    await expect(page.locator('.customer-card h3').first()).toContainText('Acme Corporation');
   });
 
   test('should show the Customer Info form instead of the placeholder', async ({ page }) => {

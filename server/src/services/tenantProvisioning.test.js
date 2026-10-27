@@ -140,15 +140,4 @@ describe('Tenant provisioning service', () => {
       assert.strictEqual(store.getOnboardingState('cust_001').progressPercent, 25);
     });
   });
-
-  describe('reset', () => {
-    it('ignores a run that was in flight when the service was reset', () => {
-      service.provision('cust_001', 'starter');
-      store.reset();
-      service.reset();
-      scheduler.runAll();
-
-      assert.strictEqual(store.getTenantByCustomerId('cust_001').status, 'pending');
-    });
-  });
 });

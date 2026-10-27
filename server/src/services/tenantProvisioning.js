@@ -102,11 +102,7 @@ function createProvisioningService({
     return startRun(tenant, tenant.plan);
   }
 
-  function reset() {
-    activeRuns.clear();
-  }
-
-  return { provision, retry, reset };
+  return { provision, retry };
 }
 
 module.exports = { createProvisioningService, defaultSimulator };

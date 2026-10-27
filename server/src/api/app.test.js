@@ -25,16 +25,16 @@ describe('Tenant API', () => {
   before(async () => {
     jobs = [];
     const provisioning = createProvisioningService({ store, schedule: fn => jobs.push(fn) });
-    server = createApp({ provisioning, enableTestHooks: true }).listen(0);
+    server = createApp({ provisioning }).listen(0);
     await new Promise(resolve => server.once('listening', resolve));
     baseUrl = `http://127.0.0.1:${server.address().port}`;
   });
 
   after(() => server.close());
 
-  beforeEach(async () => {
+  beforeEach(() => {
     jobs.length = 0;
-    await call('POST', '/api/test/reset');
+    store.reset();
   });
 
   describe('POST /api/tenants/:customerId/provision', () => {
@@ -108,17 +108,6 @@ describe('Tenant API', () => {
       assert.strictEqual(row.tenantPlan, 'professional');
       assert.strictEqual(row.steps.find(s => s.name === 'Tenant Setup').status, 'completed');
       assert.strictEqual(row.progressPercent, 25);
-    });
-  });
-
-  describe('test hooks', () => {
-    it('are not available unless enabled', async () => {
-      const app = createApp({ provisioning: createProvisioningService({ store }) });
-      const disabled = app.listen(0);
-      await new Promise(resolve => disabled.once('listening', resolve));
-      const res = await fetch(`http://127.0.0.1:${disabled.address().port}/api/test/reset`, { method: 'POST' });
-      disabled.close();
-      assert.strictEqual(res.status, 404);
     });
   });
 });

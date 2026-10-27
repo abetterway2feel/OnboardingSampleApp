@@ -1,18 +1,20 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
-// All tests share the single seeded customer and the in-memory server state
-test.describe.configure({ mode: 'serial' });
-
 test.describe('Tenant Setup', () => {
-  test.beforeEach(async ({ page, request }) => {
-    const reset = await request.post('/api/test/reset');
-    expect(
-      reset.ok(),
-      'Reset hook unavailable: start the server with ENABLE_TEST_HOOKS=true (or stop the running dev server)'
-    ).toBeTruthy();
+  let name;
+
+  // Each test provisions its own uniquely named customer, so tests don't share tenant state
+  test.beforeEach(async ({ page, request }, testInfo) => {
+    name = `Tenant E2E ${testInfo.testId}-${Date.now()}`;
+    const created = await request.post('/api/customers', {
+      data: { name, region: 'EMEA', industry: 'Retail' }
+    });
+    expect(created.ok()).toBeTruthy();
+
     await page.goto('/');
     await page.getByRole('button', { name: 'Tenant Setup' }).click();
+    await page.getByLabel('Customer').selectOption({ label: name });
   });
 
   test('provisions a failing plan, shows the reason, and retries to active', async ({ page }) => {
@@ -37,9 +39,10 @@ test.describe('Tenant Setup', () => {
 
     // Dashboard reflects the tenant and the completed step
     await page.getByRole('button', { name: 'Dashboard' }).click();
-    await expect(page.getByTestId('tenant-summary')).toContainText('active (enterprise)');
-    await expect(page.locator('.checklist li', { hasText: 'Tenant Setup' })).toContainText('completed');
-    await expect(page.locator('.progress-bar')).toContainText('25%');
+    const card = page.locator('.customer-card', { hasText: name });
+    await expect(card.getByTestId('tenant-summary')).toContainText('active (enterprise)');
+    await expect(card.locator('.checklist li', { hasText: 'Tenant Setup' })).toContainText('completed');
+    await expect(card.locator('.progress-bar')).toContainText('25%');
   });
 
   test('provisions a non-failing plan straight to active', async ({ page }) => {
@@ -57,6 +60,7 @@ test.describe('Tenant Setup', () => {
 
     await page.reload();
     await page.getByRole('button', { name: 'Tenant Setup' }).click();
+    await page.getByLabel('Customer').selectOption({ label: name });
     await expect(page.getByTestId('tenant-status')).toContainText('provisioning');
     await expect(page.getByLabel('Plan')).toHaveValue('starter');
     await expect(page.getByTestId('tenant-status')).toContainText('active');

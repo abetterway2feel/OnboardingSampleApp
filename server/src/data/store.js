@@ -62,6 +62,13 @@ function addCustomer(customer) {
   return customer;
 }
 
+function updateCustomer(id, updates) {
+  const index = store.customers.findIndex(c => c.id === id);
+  if (index === -1) return null;
+  store.customers[index] = { ...store.customers[index], ...updates };
+  return store.customers[index];
+}
+
 function getTenants() {
   return [...store.tenants];
 }
@@ -116,6 +123,7 @@ module.exports = {
   getCustomers,
   getCustomerById,
   addCustomer,
+  updateCustomer,
   getTenants,
   getTenantByCustomerId,
   addTenant,

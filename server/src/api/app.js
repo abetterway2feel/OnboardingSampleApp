@@ -1,6 +1,9 @@
+const { randomUUID } = require('crypto');
 const express = require('express');
 const cors = require('cors');
 const store = require('../data/store');
+const { LOCATIONS, SEGMENTS, createCustomer, createDefaultOnboardingSteps, validateCustomerInfo } = require('../models');
+const { parseCustomerCsv } = require('../import');
 const { createProvisioningService } = require('../services/tenantProvisioning');
 
 const HTTP_STATUS_BY_ERROR_CODE = {
@@ -20,15 +23,12 @@ function createDefaultProvisioning() {
   });
 }
 
-function createApp({
-  provisioning = createDefaultProvisioning(),
-  enableTestHooks = process.env.ENABLE_TEST_HOOKS === 'true'
-} = {}) {
+function createApp({ provisioning = createDefaultProvisioning() } = {}) {
   const app = express();
 
   // Middleware
   app.use(cors());
-  app.use(express.json());
+  app.use(express.json({ limit: '1mb' })); // CSV imports are sent as text in the JSON body
 
   // Health check
   app.get('/api/health', (req, res) => {
@@ -38,6 +38,54 @@ function createApp({
   // Get all customers
   app.get('/api/customers', (req, res) => {
     res.json(store.getCustomers());
+  });
+
+  // Allowed values for the Customer Info form
+  app.get('/api/customer-options', (req, res) => {
+    res.json({ locations: LOCATIONS, segments: SEGMENTS });
+  });
+
+  // Save a validated customer and queue it for onboarding
+  function queueCustomer(values) {
+    const customer = store.addCustomer(createCustomer({ ...values, id: `cust_${randomUUID()}` }));
+    store.addOnboardingState({ customerId: customer.id, steps: createDefaultOnboardingSteps(), progressPercent: 0 });
+    return customer;
+  }
+
+  // Create customer (name, location = region, segment = industry) and queue it for onboarding
+  app.post('/api/customers', (req, res) => {
+    const { values, errors } = validateCustomerInfo(req.body, store.getCustomers());
+    if (Object.keys(errors).length) {
+      return res.status(400).json({ error: 'Validation failed', fields: errors });
+    }
+    res.status(201).json(queueCustomer(values));
+  });
+
+  // Bulk import from CSV text: valid rows are queued, invalid ones are reported by row (1 = first row after the header)
+  app.post('/api/customers/import', (req, res) => {
+    const { rows, error } = parseCustomerCsv(req.body?.csv);
+    if (error) return res.status(400).json({ error });
+
+    const imported = [];
+    const skipped = [];
+    rows.forEach((row, i) => {
+      const { values, errors } = validateCustomerInfo(row, store.getCustomers());
+      if (Object.keys(errors).length) skipped.push({ row: i + 1, name: values.name, errors });
+      else imported.push(queueCustomer(values));
+    });
+    res.json({ imported, skipped });
+  });
+
+  // Update customer info
+  app.put('/api/customers/:id', (req, res) => {
+    if (!store.getCustomerById(req.params.id)) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+    const { values, errors } = validateCustomerInfo(req.body, store.getCustomers(), req.params.id);
+    if (Object.keys(errors).length) {
+      return res.status(400).json({ error: 'Validation failed', fields: errors });
+    }
+    res.json(store.updateCustomer(req.params.id, values));
   });
 
   // Get customer by ID
@@ -106,15 +154,6 @@ function createApp({
   app.post('/api/tenants/:customerId/retry', (req, res) => {
     respond(res, provisioning.retry(req.params.customerId));
   });
-
-  // Test hook: restore seed data (only when explicitly enabled)
-  if (enableTestHooks) {
-    app.post('/api/test/reset', (req, res) => {
-      provisioning.reset();
-      store.reset();
-      res.json({ status: 'reset' });
-    });
-  }
 
   return app;
 }

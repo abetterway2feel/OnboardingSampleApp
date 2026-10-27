@@ -4,7 +4,8 @@ const {
   createCustomer, 
   createTenant, 
   createDefaultOnboardingSteps, 
-  calculateProgress 
+  calculateProgress,
+  validateCustomerInfo
 } = require('./index');
 
 describe('Domain Models', () => {
@@ -29,6 +30,38 @@ describe('Domain Models', () => {
       assert.ok(customer.id.startsWith('cust_'));
       assert.strictEqual(customer.name, '');
       assert.ok(customer.createdAt);
+    });
+  });
+
+  describe('validateCustomerInfo', () => {
+    const valid = { name: 'Globex', region: 'EMEA', industry: 'Retail' };
+
+    it('should accept valid values and trim whitespace', () => {
+      const { values, errors } = validateCustomerInfo({ name: '  Globex  ', region: ' EMEA ', industry: ' Retail ' });
+      assert.deepStrictEqual(errors, {});
+      assert.deepStrictEqual(values, valid);
+    });
+
+    it('should reject empty and whitespace-only fields, naming each field', () => {
+      const { errors } = validateCustomerInfo({ name: '   ', region: '', industry: undefined });
+      assert.deepStrictEqual(Object.keys(errors).sort(), ['industry', 'name', 'region']);
+    });
+
+    it('should reject names over 100 characters but allow exactly 100', () => {
+      assert.ok(validateCustomerInfo({ ...valid, name: 'a'.repeat(101) }).errors.name);
+      assert.deepStrictEqual(validateCustomerInfo({ ...valid, name: 'a'.repeat(100) }).errors, {});
+    });
+
+    it('should reject location and segment outside the fixed lists', () => {
+      const { errors } = validateCustomerInfo({ ...valid, region: 'Mars', industry: 'Mining' });
+      assert.ok(errors.region);
+      assert.ok(errors.industry);
+    });
+
+    it('should reject duplicate names case-insensitively, except for the customer being edited', () => {
+      const existing = [{ id: 'c1', name: 'Globex' }];
+      assert.ok(validateCustomerInfo({ ...valid, name: 'GLOBEX' }, existing).errors.name);
+      assert.deepStrictEqual(validateCustomerInfo({ ...valid, name: 'GLOBEX' }, existing, 'c1').errors, {});
     });
   });
 

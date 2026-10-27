@@ -22,6 +22,10 @@ module.exports = defineConfig({
     command: 'npm start',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
+    env: {
+      // Long enough to observe the "provisioning" state, including across a page reload
+      PROVISIONING_DELAY_MS: '2000',
+    },
     timeout: 120 * 1000,
   },
 });

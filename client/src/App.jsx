@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import TenantSetupTab from './TenantSetupTab.jsx';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -14,7 +15,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const loadDashboard = () =>
+  const loadDashboard = useCallback(() =>
     fetch('/api/onboarding')
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -32,9 +33,10 @@ function App() {
         setError(err.message);
         setOnboardingData([]);
         setLoading(false);
-      });
+      }), []);
 
-  useEffect(() => { loadDashboard(); }, []);
+  // Load on mount and whenever the user switches tabs, so tenant changes show up
+  useEffect(() => { loadDashboard(); }, [activeTab, loadDashboard]);
 
   return (
     <div className="app">
@@ -66,7 +68,7 @@ function App() {
           <PlaceholderTab title="Data Mapping" description="Map customer data to platform configuration" />
         )}
         {activeTab === 'tenant-setup' && (
-          <PlaceholderTab title="Tenant Setup" description="Provision and configure customer tenant" />
+          <TenantSetupTab customers={onboardingData} onTenantChanged={loadDashboard} />
         )}
         {activeTab === 'import' && <ImportTab onImported={loadDashboard} />}
       </main>
@@ -105,6 +107,9 @@ function DashboardTab({ data, loading, error }) {
           <div className="customer-meta">
             <span>📍 {item.customerRegion}</span>
             <span>🏭 {item.customerIndustry}</span>
+            <span data-testid="tenant-summary">
+              🏢 Tenant: {item.tenantStatus || 'none'}{item.tenantPlan ? ` (${item.tenantPlan})` : ''}
+            </span>
           </div>
 
           <div className="progress-section">

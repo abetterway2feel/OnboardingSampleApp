@@ -178,7 +178,7 @@ Demo **whatever you reached**, no matter how small.
 - ✅ Customer Info (form: company name, location, segment; create and edit)
 - ✅ Data Mapping (placeholder)
 - ✅ Tenant Setup (placeholder)
-- ✅ Import (placeholder)
+- ✅ Import (bulk-add customers from a CSV file or pasted text; see `sample-data/customers_import.csv`)
 
 ### Example Domain Models
 
@@ -242,6 +242,7 @@ Intentionally boring and fast:
 | GET | `/api/health` | Health check |
 | GET | `/api/customers` | List all customers |
 | POST | `/api/customers` | Create customer (`name`, `region` = location, `industry` = segment; all required) |
+| POST | `/api/customers/import` | Bulk create from CSV text (`{ csv }`, columns `name`, `location`, `segment`, max 500 rows); returns `{ imported, skipped }` where each skipped row lists its errors |
 | GET | `/api/customers/:id` | Get customer by ID |
 | PUT | `/api/customers/:id` | Update customer name, location and segment |
 | GET | `/api/customer-options` | Allowed locations and segments |

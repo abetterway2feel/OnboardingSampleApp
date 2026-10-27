@@ -71,4 +71,36 @@ test.describe('Onboarding Dashboard', () => {
     await expect(card).toContainText('APAC');
     await expect(card).toContainText('Retail');
   });
+
+  test('should bulk import customers from a CSV file and report skipped rows', async ({ page }) => {
+    const id = Date.now();
+    const csv = [
+      'name,location,segment',
+      `Import A ${id},EMEA,Retail`,
+      `"Import, B ${id}",APAC,Technology`,
+      `Import Bad ${id},Mars,Retail`
+    ].join('\n');
+
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Import' }).click();
+    await expect(page.locator('.placeholder')).toHaveCount(0);
+    await page.locator('input[type=file]').setInputFiles({ name: 'customers.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+    await page.getByRole('button', { name: 'Import customers' }).click();
+
+    await expect(page.getByText('Imported 2 customer(s), skipped 1.')).toBeVisible();
+    await expect(page.getByText(`Row 3 (Import Bad ${id}): Location must be one of`)).toBeVisible();
+
+    await page.getByRole('button', { name: 'Dashboard' }).click();
+    await expect(page.locator('.customer-card', { hasText: `Import A ${id}` })).toContainText('EMEA');
+    await expect(page.locator('.customer-card', { hasText: `Import, B ${id}` })).toContainText('Technology');
+  });
+
+  test('should show an error when the CSV is missing a column', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Import' }).click();
+    await page.getByLabel('Or paste CSV').fill('name,location\nX,EMEA');
+    await page.getByRole('button', { name: 'Import customers' }).click();
+
+    await expect(page.getByRole('alert')).toContainText('Missing column(s): segment');
+  });
 });

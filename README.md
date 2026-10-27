@@ -176,7 +176,7 @@ Demo **whatever you reached**, no matter how small.
 ### Navigation Scaffold
 - ✅ Dashboard (shows onboarding queue)
 - ✅ Customer Info (form: company name, location, segment; create and edit)
-- ✅ Data Mapping (placeholder)
+- ✅ Data Mapping (pick a customer, upload a sample clients CSV, review suggested column matches per standard client field, correct and save; saving completes the Data Mapping step)
 - ✅ Tenant Setup (placeholder)
 - ✅ Import (placeholder)
 
@@ -245,6 +245,10 @@ Intentionally boring and fast:
 | GET | `/api/customers/:id` | Get customer by ID |
 | PUT | `/api/customers/:id` | Update customer name, location and segment |
 | GET | `/api/customer-options` | Allowed locations and segments |
+| GET | `/api/mapping-fields` | Standard client fields a column can be mapped to (`clientName` is required) |
+| POST | `/api/customers/:id/mapping/suggest` | Suggest column matches from a sample CSV (`csv` text, optional `filename`); saves nothing |
+| GET | `/api/customers/:id/mapping` | Get the customer's saved mapping (404 if none) |
+| PUT | `/api/customers/:id/mapping` | Save or replace the mapping (`headers`, `columns` = field to file column); completes the Data Mapping step |
 | GET | `/api/customers/:id/onboarding` | Get onboarding state |
 | GET | `/api/onboarding` | Dashboard view (all states + customer info) |
 | GET | `/api/tenants/:customerId` | Get tenant by customer ID |

@@ -95,6 +95,9 @@ app.get('/api/tenants/:customerId', (req, res) => {
   res.json(tenant);
 });
 
+// Data Mapping
+app.use('/api', require('./mapping/routes'));
+
 // Start server
 if (require.main === module) {
   app.listen(PORT, () => {

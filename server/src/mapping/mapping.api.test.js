@@ -5,7 +5,6 @@ const path = require('path');
 const app = require('../index');
 
 const csvB = fs.readFileSync(path.join(__dirname, '../../../sample-data/CustomerB_XYZFinancialServices/clients.csv'), 'utf8');
-const SKIP = (ac) => ({ skip: `red-test-${ac}` });
 
 describe('Data Mapping API', () => {
   let server, base;
@@ -22,13 +21,13 @@ describe('Data Mapping API', () => {
   const newCustomer = async (name) =>
     (await (await send('POST', '/api/customers', { name, region: 'EMEA', industry: 'Retail' })).json()).id;
 
-  it('lists the standard client fields (AC-2)', SKIP('AC-2'), async () => {
+  it('lists the standard client fields (AC-2)', async () => {
     const fields = await (await fetch(base + '/api/mapping-fields')).json();
     assert.strictEqual(fields.length, 10);
     assert.deepStrictEqual(fields.filter(f => f.required).map(f => f.key), ['clientName']);
   });
 
-  it('suggests matches for Customer B without saving anything (AC-1)', SKIP('AC-1'), async () => {
+  it('suggests matches for Customer B without saving anything (AC-1)', async () => {
     const id = await newCustomer('Suggest Co');
     const res = await send('POST', `/api/customers/${id}/mapping/suggest`, { filename: 'clients.csv', csv: csvB });
     assert.strictEqual(res.status, 200);
@@ -39,7 +38,7 @@ describe('Data Mapping API', () => {
     assert.strictEqual(await progress(id), 0);
   });
 
-  it('rejects empty, non-CSV and duplicate-header files with a message (AC-8, AC-9)', SKIP('AC-8'), async () => {
+  it('rejects empty, non-CSV and duplicate-header files with a message (AC-8, AC-9)', async () => {
     const id = await newCustomer('Reject Co');
     for (const body of [{ csv: '' }, { csv: 'a,b', filename: 'x.pdf' }, { csv: 'a,A\n1,2' }, {}]) {
       const res = await send('POST', `/api/customers/${id}/mapping/suggest`, body);
@@ -48,7 +47,7 @@ describe('Data Mapping API', () => {
     }
   });
 
-  it('saves a corrected mapping, completes the step and updates progress (AC-2, AC-6)', SKIP('AC-6'), async () => {
+  it('saves a corrected mapping, completes the step and updates progress (AC-2, AC-6)', async () => {
     const id = await newCustomer('Save Co');
     const columns = { clientName: 'companyName', status: 'clientStatus', industry: 'sectorCode' };
     const headers = ['clientCode', 'companyName', 'clientStatus', 'sectorCode'];
@@ -60,7 +59,7 @@ describe('Data Mapping API', () => {
     assert.strictEqual(await progress(id), 25);
   });
 
-  it('blocks a save without Client Name or with a shared column, leaving progress unchanged (AC-2, AC-3, AC-6)', SKIP('AC-3'), async () => {
+  it('blocks a save without Client Name or with a shared column, leaving progress unchanged (AC-2, AC-3, AC-6)', async () => {
     const id = await newCustomer('Blocked Co');
     const headers = ['a', 'b'];
     const noName = await send('PUT', `/api/customers/${id}/mapping`, { headers, columns: { status: 'a' } });
@@ -72,7 +71,7 @@ describe('Data Mapping API', () => {
     assert.strictEqual(await progress(id), 0);
   });
 
-  it('replaces an existing mapping on edit (AC-5)', SKIP('AC-5'), async () => {
+  it('replaces an existing mapping on edit (AC-5)', async () => {
     const id = await newCustomer('Edit Co');
     const headers = ['a', 'b'];
     await send('PUT', `/api/customers/${id}/mapping`, { headers, columns: { clientName: 'a' } });
@@ -81,7 +80,7 @@ describe('Data Mapping API', () => {
     assert.strictEqual(await progress(id), 25);
   });
 
-  it('returns 404 for an unknown customer (AC-2)', SKIP('AC-2'), async () => {
+  it('returns 404 for an unknown customer (AC-2)', async () => {
     assert.strictEqual((await send('GET', '/api/customers/nope/mapping')).status, 404);
     assert.strictEqual((await send('PUT', '/api/customers/nope/mapping', { headers: ['a'], columns: { clientName: 'a' } })).status, 404);
     assert.strictEqual((await send('POST', '/api/customers/nope/mapping/suggest', { csv: 'a' })).status, 404);

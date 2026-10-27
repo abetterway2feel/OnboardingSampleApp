@@ -21,7 +21,13 @@ module.exports = defineConfig({
   webServer: {
     command: 'npm start',
     url: 'http://localhost:5173',
+    // A reused server must already run with ENABLE_TEST_HOOKS=true (tenant-setup.spec.js resets state through it)
     reuseExistingServer: !process.env.CI,
+    env: {
+      ENABLE_TEST_HOOKS: 'true',
+      // Long enough to observe the "provisioning" state, including across a page reload
+      PROVISIONING_DELAY_MS: '2000',
+    },
     timeout: 120 * 1000,
   },
 });

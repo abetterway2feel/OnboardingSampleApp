@@ -152,6 +152,11 @@ header p {
   color: white;
 }
 
+.step-status.failed {
+  background: #dc2626;
+  color: white;
+}
+
 .customer-card {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -168,4 +173,60 @@ header p {
   gap: 16px;
   color: #6b7280;
   font-size: 0.9rem;
+}
+
+.tenant-setup .form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tenant-setup label {
+  width: 80px;
+  font-weight: 500;
+}
+
+.tenant-setup select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  min-width: 220px;
+}
+
+.tenant-status {
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.tenant-status.provisioning { color: #f59e0b; }
+.tenant-status.active { color: #10b981; }
+.tenant-status.failed { color: #dc2626; }
+
+.tenant-failure,
+.form-error {
+  color: #dc2626;
+  margin: 12px 0;
+}
+
+.tenant-active {
+  color: #047857;
+  margin: 12px 0;
+}
+
+.action-button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.action-button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
 }

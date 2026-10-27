@@ -18,8 +18,12 @@
  * @property {string} customerId - Associated customer ID
  * @property {string} status - 'pending' | 'provisioning' | 'active' | 'failed'
  * @property {string} plan - 'starter' | 'professional' | 'enterprise'
+ * @property {string|null} failureReason - Why the last provisioning attempt failed
+ * @property {number} attempts - Number of provisioning attempts started
  * @property {string} createdAt - ISO timestamp
  */
+
+const PLANS = ['starter', 'professional', 'enterprise'];
 
 /**
  * @typedef {Object} OnboardingStep
@@ -63,6 +67,8 @@ function createTenant(data) {
     customerId: data.customerId || '',
     status: data.status || 'pending',
     plan: data.plan || 'starter',
+    failureReason: data.failureReason || null,
+    attempts: data.attempts || 0,
     createdAt: data.createdAt || new Date().toISOString()
   };
 }
@@ -92,6 +98,7 @@ function calculateProgress(steps) {
 }
 
 module.exports = {
+  PLANS,
   createCustomer,
   createTenant,
   createDefaultOnboardingSteps,

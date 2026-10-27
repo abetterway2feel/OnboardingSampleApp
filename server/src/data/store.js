@@ -75,6 +75,21 @@ function addTenant(tenant) {
   return tenant;
 }
 
+function updateTenant(customerId, updates) {
+  const index = store.tenants.findIndex(t => t.customerId === customerId);
+  if (index === -1) return null;
+  store.tenants[index] = { ...store.tenants[index], ...updates };
+  return store.tenants[index];
+}
+
+// Restore the seed data (used by tests)
+function reset() {
+  store.customers = [];
+  store.tenants = [];
+  store.onboardingStates = [];
+  seedData();
+}
+
 function getOnboardingState(customerId) {
   return store.onboardingStates.find(s => s.customerId === customerId);
 }
@@ -104,6 +119,8 @@ module.exports = {
   getTenants,
   getTenantByCustomerId,
   addTenant,
+  updateTenant,
+  reset,
   getOnboardingState,
   getAllOnboardingStates,
   addOnboardingState,

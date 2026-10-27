@@ -52,6 +52,37 @@ function createCustomer(data) {
   };
 }
 
+const LOCATIONS = ['North America', 'EMEA', 'APAC', 'LATAM'];
+const SEGMENTS = ['Manufacturing', 'Technology', 'Healthcare', 'Financial Services', 'Retail', 'Education'];
+const MAX_NAME_LENGTH = 100;
+
+/**
+ * Validates and trims the Customer Info fields (name, region = location, industry = segment).
+ * @param {Object} data
+ * @param {Customer[]} existing - customers to check name uniqueness against
+ * @param {string} [excludeId] - customer being edited (ignored in the duplicate check)
+ * @returns {{ values: {name: string, region: string, industry: string}, errors: Object }}
+ */
+function validateCustomerInfo(data, existing = [], excludeId) {
+  const trim = v => (typeof v === 'string' ? v.trim() : '');
+  const values = { name: trim(data?.name), region: trim(data?.region), industry: trim(data?.industry) };
+  const errors = {};
+
+  if (!values.name) errors.name = 'Company name is required';
+  else if (values.name.length > MAX_NAME_LENGTH) errors.name = `Company name must be ${MAX_NAME_LENGTH} characters or fewer`;
+  else if (existing.some(c => c.id !== excludeId && c.name.toLowerCase() === values.name.toLowerCase())) {
+    errors.name = 'A customer with this company name already exists';
+  }
+
+  if (!values.region) errors.region = 'Location is required';
+  else if (!LOCATIONS.includes(values.region)) errors.region = 'Location must be one of: ' + LOCATIONS.join(', ');
+
+  if (!values.industry) errors.industry = 'Segment is required';
+  else if (!SEGMENTS.includes(values.industry)) errors.industry = 'Segment must be one of: ' + SEGMENTS.join(', ');
+
+  return { values, errors };
+}
+
 /**
  * Creates a new Tenant object
  * @param {Partial<Tenant>} data 
@@ -92,6 +123,9 @@ function calculateProgress(steps) {
 }
 
 module.exports = {
+  LOCATIONS,
+  SEGMENTS,
+  validateCustomerInfo,
   createCustomer,
   createTenant,
   createDefaultOnboardingSteps,

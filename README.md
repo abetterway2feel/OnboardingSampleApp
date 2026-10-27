@@ -175,7 +175,7 @@ Demo **whatever you reached**, no matter how small.
 
 ### Navigation Scaffold
 - ✅ Dashboard (shows onboarding queue)
-- ✅ Customer Info (placeholder)
+- ✅ Customer Info (form: company name, location, segment; create and edit)
 - ✅ Data Mapping (placeholder)
 - ✅ Tenant Setup (placeholder)
 - ✅ Import (placeholder)
@@ -241,7 +241,10 @@ Intentionally boring and fast:
 |--------|----------|-------------|
 | GET | `/api/health` | Health check |
 | GET | `/api/customers` | List all customers |
+| POST | `/api/customers` | Create customer (`name`, `region` = location, `industry` = segment; all required) |
 | GET | `/api/customers/:id` | Get customer by ID |
+| PUT | `/api/customers/:id` | Update customer name, location and segment |
+| GET | `/api/customer-options` | Allowed locations and segments |
 | GET | `/api/customers/:id/onboarding` | Get onboarding state |
 | GET | `/api/onboarding` | Dashboard view (all states + customer info) |
 | GET | `/api/tenants/:customerId` | Get tenant by customer ID |

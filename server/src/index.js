@@ -1,6 +1,8 @@
+const { randomUUID } = require('crypto');
 const express = require('express');
 const cors = require('cors');
 const store = require('./data/store');
+const { LOCATIONS, SEGMENTS, createCustomer, createDefaultOnboardingSteps, validateCustomerInfo } = require('./models');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -17,6 +19,34 @@ app.get('/api/health', (req, res) => {
 // Get all customers
 app.get('/api/customers', (req, res) => {
   res.json(store.getCustomers());
+});
+
+// Allowed values for the Customer Info form
+app.get('/api/customer-options', (req, res) => {
+  res.json({ locations: LOCATIONS, segments: SEGMENTS });
+});
+
+// Create customer (name, location = region, segment = industry) and queue it for onboarding
+app.post('/api/customers', (req, res) => {
+  const { values, errors } = validateCustomerInfo(req.body, store.getCustomers());
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Validation failed', fields: errors });
+  }
+  const customer = store.addCustomer(createCustomer({ ...values, id: `cust_${randomUUID()}` }));
+  store.addOnboardingState({ customerId: customer.id, steps: createDefaultOnboardingSteps(), progressPercent: 0 });
+  res.status(201).json(customer);
+});
+
+// Update customer info
+app.put('/api/customers/:id', (req, res) => {
+  if (!store.getCustomerById(req.params.id)) {
+    return res.status(404).json({ error: 'Customer not found' });
+  }
+  const { values, errors } = validateCustomerInfo(req.body, store.getCustomers(), req.params.id);
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Validation failed', fields: errors });
+  }
+  res.json(store.updateCustomer(req.params.id, values));
 });
 
 // Get customer by ID
@@ -66,7 +96,11 @@ app.get('/api/tenants/:customerId', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Onboarding API server running at http://localhost:${PORT}`);
-  console.log(`   Health check: http://localhost:${PORT}/api/health`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Onboarding API server running at http://localhost:${PORT}`);
+    console.log(`   Health check: http://localhost:${PORT}/api/health`);
+  });
+}
+
+module.exports = app;

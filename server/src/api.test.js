@@ -50,6 +50,52 @@ describe('Customer Info API', () => {
     assert.strictEqual(customer.region, 'LATAM');
   });
 
+  describe('bulk import', () => {
+    const importCsv = (csv) => send('POST', '/api/customers/import', { csv });
+
+    it('imports valid rows into the queue and reports invalid, duplicate and blank rows', async () => {
+      const csv = [
+        'name,location,segment',
+        '  Bulk One  ,EMEA,Retail',
+        'Bulk Two,APAC,Technology',
+        'bulk one,EMEA,Retail', // duplicate of an earlier row in the file
+        'Acme Corporation,EMEA,Retail', // duplicate of an existing customer
+        'Bulk Bad,Mars,',
+      ].join('\n');
+      const res = await importCsv(csv);
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      assert.deepStrictEqual(body.imported.map(c => c.name), ['Bulk One', 'Bulk Two']);
+      assert.deepStrictEqual(body.skipped.map(s => s.row), [3, 4, 5]);
+      assert.ok(body.skipped[0].errors.name);
+      assert.ok(body.skipped[1].errors.name);
+      assert.deepStrictEqual(Object.keys(body.skipped[2].errors).sort(), ['industry', 'region']);
+
+      const dashboard = await (await fetch(base + '/api/onboarding')).json();
+      const item = dashboard.find(d => d.customerName === 'Bulk One');
+      assert.strictEqual(item.progressPercent, 0);
+      assert.strictEqual(item.steps.length, 4);
+    });
+
+    it('is idempotent: importing the same file again skips every row as a duplicate', async () => {
+      const csv = 'name,location,segment\nBulk Idem,EMEA,Retail';
+      assert.strictEqual((await (await importCsv(csv)).json()).imported.length, 1);
+      const again = await (await importCsv(csv)).json();
+      assert.strictEqual(again.imported.length, 0);
+      assert.strictEqual(again.skipped.length, 1);
+    });
+
+    it('returns 400 and imports nothing for a missing column or empty file', async () => {
+      const count = async () => (await (await fetch(base + '/api/customers')).json()).length;
+      const before = await count();
+      const noColumn = await importCsv('name,location\nX,EMEA');
+      assert.strictEqual(noColumn.status, 400);
+      assert.match((await noColumn.json()).error, /segment/i);
+      assert.strictEqual((await send('POST', '/api/customers/import', {})).status, 400);
+      assert.strictEqual(await count(), before);
+    });
+  });
+
   it('rejects an invalid update and returns 404 for an unknown id', async () => {
     const bad = await send('PUT', '/api/customers/cust_001', { name: '', region: 'LATAM', industry: 'Manufacturing' });
     assert.strictEqual(bad.status, 400);

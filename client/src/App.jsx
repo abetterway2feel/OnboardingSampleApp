@@ -68,9 +68,7 @@ function App() {
         {activeTab === 'tenant-setup' && (
           <PlaceholderTab title="Tenant Setup" description="Provision and configure customer tenant" />
         )}
-        {activeTab === 'import' && (
-          <PlaceholderTab title="Import" description="Import customer data into the platform" />
-        )}
+        {activeTab === 'import' && <ImportTab onImported={loadDashboard} />}
       </main>
     </div>
   );
@@ -214,6 +212,89 @@ function CustomerInfoTab({ customers, onSaved }) {
       <button type="submit">{selectedId ? 'Save changes' : 'Add customer'}</button>
       {message && (
         <p role="status" style={{ color: message.error ? '#dc2626' : '#16a34a' }}>{message.text}</p>
+      )}
+    </form>
+  );
+}
+
+function ImportTab({ onImported }) {
+  const [csv, setCsv] = useState('');
+  const [result, setResult] = useState(null);
+  const [message, setMessage] = useState(null);
+
+  const loadFile = async (e) => {
+    const file = e.target.files[0];
+    if (file) setCsv(await file.text());
+    setResult(null);
+    setMessage(null);
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setResult(null);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/customers/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csv })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage(body.error || `HTTP ${res.status}`);
+        return;
+      }
+      setResult(body);
+      await onImported();
+    } catch (err) {
+      // The pasted CSV stays in the box so it can be retried
+      setMessage(`Failed to import: ${err.message}`);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} style={{ display: 'grid', gap: '12px', maxWidth: '640px' }}>
+      <h2>Import</h2>
+      <p style={{ color: '#6b7280' }}>
+        Add many customers at once from a CSV with the columns <code>name</code>, <code>location</code> and <code>segment</code>.
+        Rows that fail validation are skipped and listed below; up to 500 rows per import.
+      </p>
+
+      <label>
+        CSV file
+        <input type="file" accept=".csv,text/csv" onChange={loadFile} style={{ display: 'block' }} />
+      </label>
+
+      <label>
+        Or paste CSV
+        <textarea
+          value={csv}
+          onChange={(e) => setCsv(e.target.value)}
+          rows={8}
+          placeholder={'name,location,segment\nGlobex,EMEA,Manufacturing'}
+          style={{ display: 'block', width: '100%', fontFamily: 'monospace' }}
+        />
+      </label>
+
+      <button type="submit" disabled={!csv.trim()}>Import customers</button>
+
+      {message && <p role="alert" style={{ color: '#dc2626' }}>{message}</p>}
+
+      {result && (
+        <div role="status">
+          <p style={{ color: result.imported.length ? '#16a34a' : '#6b7280' }}>
+            Imported {result.imported.length} customer(s), skipped {result.skipped.length}.
+          </p>
+          {result.skipped.length > 0 && (
+            <ul style={{ color: '#dc2626', fontSize: '0.9rem' }}>
+              {result.skipped.map(s => (
+                <li key={s.row}>
+                  Row {s.row}{s.name ? ` (${s.name})` : ''}: {Object.values(s.errors).join('; ')}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </form>
   );

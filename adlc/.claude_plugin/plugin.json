@@ -1,0 +1,12 @@
+{
+    "name": "adlc",
+    "source": "./plugins/adlc",
+    "description": "Agentic Development Plugin",
+    "version": "1.3.0",
+    "author": {
+    "name": "HG Capital",
+    "email": "nick.barrington@hgcapital.com"
+    },
+    "homepage": "https://github.com/HgDataTeam/hg-claude-code-plugin/plugins/adlc/README.md",
+    "repository": "https://github.com/HgDataTeam/hg-claude-code-plugin"
+}
